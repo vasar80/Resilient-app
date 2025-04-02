@@ -1,0 +1,85 @@
+.walking-sequence {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.image-container {
+  position: relative;
+  cursor: move;
+  padding: 8px;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+.image-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.image-container.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.image-container.correct {
+  border: 2px solid #4CAF50;
+}
+
+.image-container.incorrect {
+  border: 2px solid #f44336;
+}
+
+.image-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+/* Stile per l'area di drop */
+.image-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.image-container.dragging::after {
+  opacity: 1;
+  animation: pulse 1.5s infinite;
+}
+
+/* Animazione per il feedback visivo durante il drag */
+@keyframes pulse {
+  0% {
+    border-color: #ccc;
+  }
+  50% {
+    border-color: #2196F3;
+  }
+  100% {
+    border-color: #ccc;
+  }
+}
+
+@media (max-width: 768px) {
+  .image-container {
+    margin: 0 auto;
+  }
+  
+  .image-container img {
+    height: 300px;
+  }
+} 
