@@ -13,6 +13,8 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
   width: fit-content;
+  flex: 0 0 auto;
+  user-select: none;
 }
 
 .image-container:hover {
@@ -21,8 +23,31 @@
 }
 
 .image-container.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
+  opacity: 0;
+  z-index: 1000;
+}
+
+.image-container.dropping {
+  opacity: 1;
+  z-index: 1000;
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.image-container.shifted {
+  transition: transform 0.3s ease;
+}
+
+.image-container.placeholder {
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 2px dashed #ccc;
+  transition: all 0.3s ease;
+  width: 128px;
+  height: 400px;
+}
+
+.image-container.placeholder:hover {
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .image-container.correct {
@@ -34,11 +59,23 @@
 }
 
 .image-container img {
-  max-width: 100%;
+  width: 120px;
   height: auto;
-  display: block;
-  max-height: 400px;
   object-fit: contain;
+  display: block;
+  border-radius: 4px;
+}
+
+.image-container.preview-move {
+  transition: transform 0.3s ease;
+}
+
+.image-container.shift-left {
+  transform: rotate(-5deg);
+}
+
+.image-container.shift-right {
+  transform: rotate(5deg);
 }
 
 /* Stile per l'area di drop */
@@ -80,6 +117,7 @@
   }
   
   .image-container img {
-    height: 300px;
+    width: 100px;
+    height: auto;
   }
 } 
