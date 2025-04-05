@@ -1,8 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './WalkingSequence.css';
 
+// Importiamo Dragula direttamente
+const loadDragula = () => {
+  return new Promise((resolve, reject) => {
+    // Controlla se dragula è già caricato
+    if (window.dragula) {
+      return resolve(window.dragula);
+    }
+
+    // Altrimenti carichiamo il CSS e JS
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/dragula/3.7.3/dragula.min.js';
+    script.onload = () => resolve(window.dragula);
+    script.onerror = () => reject(new Error('Failed to load Dragula'));
+    document.body.appendChild(script);
+  });
+};
+
 const WalkingSequence = () => {
-  // Stato iniziale delle immagini in ordine corretto
+  const containerRef = useRef(null);
+  const drakeRef = useRef(null);
   const correctSequence = [
     { id: 1, src: '/walking/cammino1.jpg', alt: 'Fase 1 del cammino' },
     { id: 2, src: '/walking/cammino2.jpg', alt: 'Fase 2 del cammino' },
@@ -10,28 +33,34 @@ const WalkingSequence = () => {
     { id: 4, src: '/walking/cammino4.jpg', alt: 'Fase 4 del cammino' },
     { id: 5, src: '/walking/cammino5.jpg', alt: 'Fase 5 del cammino' },
     { id: 6, src: '/walking/cammino6.jpg', alt: 'Fase 6 del cammino' },
-    { id: 7, src: '/walking/cammino7.jpg', alt: 'Fase 7 del cammino' },
+    { id: 7, src: '/walking/cammino7.jpg', alt: 'Fase 7 del cammino' }
   ];
-
-  const [images, setImages] = useState([]);
+  const [cards, setCards] = useState([...correctSequence]);
+  const [dragulaLoaded, setDragulaLoaded] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [draggedImage, setDraggedImage] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStartIndex, setDragStartIndex] = useState(null);
-  const [dragCurrentIndex, setDragCurrentIndex] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [previewPositions, setPreviewPositions] = useState([]);
-  const [isDropping, setIsDropping] = useState(false);
 
-  // Inizializza le immagini in ordine casuale
+  // Carica Dragula
   useEffect(() => {
-    const shuffledImages = [...correctSequence].sort(() => Math.random() - 0.5);
-    setImages(shuffledImages);
+    loadDragula()
+      .then(dragula => {
+        console.log('Dragula caricato con successo');
+        setDragulaLoaded(true);
+      })
+      .catch(error => {
+        console.error('Errore nel caricamento di Dragula:', error);
+      });
+  }, []);
+
+  // Inizializza le immagini in ordine casuale e avvia il timer
+  useEffect(() => {
+    const shuffledCards = [...correctSequence].sort(() => Math.random() - 0.5);
+    setCards(shuffledCards);
     setStartTime(Date.now());
   }, []);
 
-  // Aggiorna il timer ogni secondo
+  // Gestisce il timer
   useEffect(() => {
     let interval;
     if (startTime && !isComplete) {
@@ -42,185 +71,129 @@ const WalkingSequence = () => {
     return () => clearInterval(interval);
   }, [startTime, isComplete]);
 
-  const handleDragStart = (e, image, index) => {
-    setDraggedImage(image);
-    setDragStartIndex(index);
-    setDragCurrentIndex(index);
-    setIsDragging(true);
-    setIsDropping(false);
-    e.dataTransfer.effectAllowed = 'move';
-    
-    // Imposta l'immagine di trascinamento personalizzata
-    const dragImage = e.currentTarget.querySelector('img').cloneNode(true);
-    dragImage.style.width = '120px';
-    dragImage.style.height = 'auto';
-    dragImage.style.opacity = '0.8';
-    document.body.appendChild(dragImage);
-    e.dataTransfer.setDragImage(dragImage, 60, 200);
-    
-    // Rimuovi l'immagine di trascinamento dopo che l'evento è completato
-    setTimeout(() => {
-      document.body.removeChild(dragImage);
-    }, 0);
-  };
+  // Inizializza Dragula dopo che il componente è montato e Dragula è caricato
+  useEffect(() => {
+    if (!dragulaLoaded || !containerRef.current) return;
 
-  const handleDragEnd = (e) => {
-    // Se l'immagine non è stata rilasciata su un target valido, ripristina la posizione
-    if (dragCurrentIndex !== null && dragStartIndex !== null && dragCurrentIndex !== dragStartIndex) {
-      const newImages = [...images];
-      const [removed] = newImages.splice(dragStartIndex, 1);
-      newImages.splice(dragCurrentIndex, 0, removed);
-      setImages(newImages);
-    }
+    console.log('Inizializzazione di Dragula');
     
-    setDraggedImage(null);
-    setDragStartIndex(null);
-    setDragCurrentIndex(null);
-    setIsDragging(false);
-    setPreviewPositions([]);
-    setIsDropping(false);
-  };
-
-  const handleDragOver = (e, targetIndex) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
-    if (!isDragging || dragStartIndex === targetIndex) return;
-    
-    setDragCurrentIndex(targetIndex);
-    
-    // Calcola le nuove posizioni per tutte le immagini
-    const newPositions = [...images].map((_, index) => {
-      if (dragStartIndex < targetIndex) {
-        // Spostamento verso destra
-        if (index > dragStartIndex && index <= targetIndex) {
-          return index - 1;
-        }
-      } else {
-        // Spostamento verso sinistra
-        if (index >= targetIndex && index < dragStartIndex) {
-          return index + 1;
-        }
-      }
-      return index;
+    // Inizializza Dragula con il riferimento diretto al DOM
+    const drake = window.dragula([containerRef.current], {
+      moves: function(el, container, handle) {
+        // Permette il trascinamento solo se è una scheda e non è stata completata la verifica
+        return el.classList.contains('card') && !isComplete;
+      },
+      direction: 'horizontal'
     });
 
-    setPreviewPositions(newPositions);
-  };
+    drake.on('drag', function(el) {
+      console.log('Elemento in fase di dragging:', el);
+    });
 
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    if (dragStartIndex === null || dragStartIndex === targetIndex) return;
+    drakeRef.current = drake;
 
-    setIsDropping(true);
-    
-    // Aggiorna immediatamente le posizioni delle immagini
-    const newImages = [...images];
-    const [removed] = newImages.splice(dragStartIndex, 1);
-    newImages.splice(targetIndex, 0, removed);
-    
-    setImages(newImages);
-    setIsDragging(false);
-    setDragStartIndex(null);
-    setDragCurrentIndex(null);
-    setPreviewPositions([]);
-    
-    // Resetta lo stato di dropping dopo un breve ritardo
-    setTimeout(() => {
-      setIsDropping(false);
-    }, 300);
-  };
+    // Gestisci l'evento drop
+    drake.on('drop', function(el, target, source, sibling) {
+      console.log('Elemento rilasciato:', el);
+      
+      // Riordiniamo le carte in base alla nuova posizione nel DOM
+      const updatedCards = Array.from(containerRef.current.children)
+        .filter(child => child.classList.contains('card'))
+        .map((cardEl) => {
+          const cardId = parseInt(cardEl.getAttribute('data-id'), 10);
+          const card = cards.find(c => c.id === cardId);
+          return card ? { ...card } : null;
+        })
+        .filter(Boolean);
+      
+      console.log('Carte aggiornate:', updatedCards);
+      setCards(updatedCards);
+    });
 
-  const handleComplete = () => {
-    setIsComplete(true);
-  };
+    // Cleanup quando il componente viene smontato
+    return () => {
+      if (drakeRef.current) {
+        console.log('Distruzione di Dragula');
+        drakeRef.current.destroy();
+      }
+    };
+  }, [dragulaLoaded, cards, isComplete]);
 
-  const isCorrect = (image, index) => {
-    return image.id === correctSequence[index].id;
-  };
-
+  // Formatta il tempo in minuti:secondi
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = timeInSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Funzione per ottenere la posizione di anteprima per un'immagine
-  const getPreviewPosition = (index) => {
-    if (!isDragging || dragStartIndex === null) return index;
-    
-    // Se l'immagine è quella trascinata, non ha una posizione di anteprima
-    if (index === dragStartIndex) return index;
-    
-    // Altrimenti, usa la posizione di anteprima calcolata
-    return previewPositions[index] ?? index;
+  // Verifica se una carta è nella posizione corretta
+  const isCorrect = (card, index) => {
+    return card.id === correctSequence[index].id;
+  };
+
+  // Gestisce il click sul bottone "Verifica Sequenza"
+  const handleComplete = () => {
+    setIsComplete(true);
+  };
+
+  // Calcola il punteggio
+  const calculateScore = () => {
+    let correctCount = 0;
+    cards.forEach((card, index) => {
+      if (isCorrect(card, index)) {
+        correctCount++;
+      }
+    });
+    return correctCount;
   };
 
   return (
     <div className="walking-sequence">
-      <h2 className="text-2xl font-bold mb-6">Ordina le fasi del cammino</h2>
+      <h1>Ordina le fasi del cammino</h1>
       
       {!isComplete && (
-        <div className="text-lg mb-4">
+        <div className="timer">
           Tempo: {formatTime(timeElapsed)}
         </div>
       )}
       
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
-        {images.map((image, index) => {
-          const previewIndex = getPreviewPosition(index);
-          const isShifted = isDragging && index !== dragStartIndex && previewIndex !== index;
-          
-          return (
+      <div className="board">
+        <div className="column-header">Sequenza di immagini</div>
+        <div className="column" id="tasks" ref={containerRef}>
+          {cards.map((card, index) => (
             <div
-              key={image.id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, image, index)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              className={`image-container ${
-                isComplete
-                  ? isCorrect(image, index)
-                    ? 'correct'
-                    : 'incorrect'
-                  : ''
-              } ${dragStartIndex === index ? 'dragging' : ''} ${
-                isShifted ? 'shifted' : ''
-              } ${isDropping && dragCurrentIndex === index ? 'dropping' : ''}`}
-              style={{
-                transform: isShifted 
-                  ? `translateX(${(previewIndex - index) * 128}px)` 
-                  : 'none'
-              }}
+              key={card.id}
+              data-id={card.id}
+              className={`card ${
+                isComplete ? (isCorrect(card, index) ? 'correct' : 'incorrect') : ''
+              }`}
             >
-              <img
-                src={image.src}
-                alt={image.alt}
-                className="w-auto h-[400px] rounded-lg shadow-md"
+              <img 
+                src={card.src} 
+                alt={card.alt} 
+                className="card-image"
               />
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {!isComplete && (
-        <div className="mt-8 text-center">
-          <button
+      {!isComplete ? (
+        <div className="verify-button-container">
+          <button 
+            className="verify-button" 
             onClick={handleComplete}
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
           >
             Verifica Sequenza
           </button>
         </div>
-      )}
-
-      {isComplete && (
-        <div className="mt-8 text-center">
-          <h3 className="text-xl font-semibold mb-4">Risultato:</h3>
-          <p className="text-green-600 mb-2">✓ Immagini in verde: posizionate correttamente</p>
-          <p className="text-red-600 mb-4">✗ Immagini in rosso: posizionate in modo scorretto</p>
-          <p className="text-gray-600">Tempo impiegato: {formatTime(timeElapsed)}</p>
+      ) : (
+        <div className="result-container">
+          <h2>Risultato:</h2>
+          <p className="result-correct">✓ Immagini in verde: posizionate correttamente</p>
+          <p className="result-incorrect">✗ Immagini in rosso: posizionate in modo scorretto</p>
+          <p className="result-score">Punteggio: {calculateScore()} / {correctSequence.length}</p>
+          <p className="result-time">Tempo impiegato: {formatTime(timeElapsed)}</p>
         </div>
       )}
     </div>
